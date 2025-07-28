@@ -22,7 +22,7 @@ forge install
 
 ## Running
 
-To run tests you need to provide fork urls for Ethereum and Bsc
+To run tests you need to provide fork urls for Ethereum and Bsc.
 
 ```shell
 SRC_CHAIN_RPC=ETH_FORK_URL DST_CHAIN_RPC=BNB_FORK_URL pnpm test
