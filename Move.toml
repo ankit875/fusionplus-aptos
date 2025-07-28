@@ -1,0 +1,11 @@
+[package]
+name = "AptosFusionPlus"
+version = "0.0.0"
+ 
+[addresses]
+myapttoken = "_"
+ 
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "testnet"
+subdir = "aptos-framework"

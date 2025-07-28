@@ -1,0 +1,13 @@
+{
+  "extends": "@1inch/tsconfig",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "relayer/src",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
+  },
+  "include": ["relayer/src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
