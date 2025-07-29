@@ -82,7 +82,6 @@ go.work
 /cache
 
 ui/
-aptos-test/
 relayer/
 tests/aptos.ts
 tests/utils.ts
