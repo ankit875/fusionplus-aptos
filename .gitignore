@@ -83,6 +83,4 @@ go.work
 
 ui/
 relayer/
-tests/aptos.ts
-tests/utils.ts
 sources/
