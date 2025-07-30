@@ -1,26 +1,43 @@
 import { AptosAccount, AptosClient, TxnBuilderTypes, BCS } from "aptos";
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
+import * as path from "path";
 
-dotenv.config();
+// Load .env from the root directory (two levels up from current file)
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const NODE = "https://fullnode.testnet.aptoslabs.com/v1";
 const MODULE_ADDRESS = "0x6a33e62028e210d895c22c631c17c856cf774c887785357672636db8530e6226";
 
-const privateKey = process.env.PRIVKEY
-const address = process.env.ADDR
-console.log({ privateKey, address })
+const privateKey = process.env.PRIVKEY 
+const address = process.env.ADDR 
+console.log({ privateKey, address });
 
 // Use the SAME private key you used with the CLI
-const account = AptosAccount.fromAptosAccountObject({
-  privateKeyHex: process.env.PRIVKEY as string,
-  address: process.env.ADDR as string,
-});
+let account: AptosAccount | null = null;
+let userAccount: AptosAccount | null = null;
 
-export const userAccount = AptosAccount.fromAptosAccountObject({
-  privateKeyHex: process.env.USER_PRIVKEY as string,
-  address: process.env.USER_ADDR as string,
-});
+if (process.env.PRIVKEY && process.env.ADDR) {
+  try {
+    account = AptosAccount.fromAptosAccountObject({
+      privateKeyHex: process.env.PRIVKEY as string,
+      address: process.env.ADDR as string,
+    });
+  } catch (error) {
+    console.error("❌ Failed to create account:", error);
+  }
+}
+
+if (process.env.USER_PRIVKEY && process.env.USER_ADDR) {
+  try {
+    userAccount = AptosAccount.fromAptosAccountObject({
+      privateKeyHex: process.env.USER_PRIVKEY as string,
+      address: process.env.USER_ADDR as string,
+    });
+  } catch (error) {
+    console.error("❌ Failed to create userAccount:", error);
+  }
+}
 
 const client = new AptosClient(NODE);
 
@@ -79,6 +96,11 @@ async function signAndSubmit(payload: any, description?: string, acc?: AptosAcco
     }
 
     let aptosAccount = acc ?? account;
+    
+    if (!aptosAccount) {
+      console.error("❌ No Aptos account available. Please check your environment variables.");
+      return false;
+    }
 
     console.log("payload", payload);
     const rawTxn = await client.generateTransaction(aptosAccount.address(), payload);
@@ -162,6 +184,11 @@ async function register_token() {
 
 // Mint tokens to your account
 async function mint_tokens() {
+  if (!account) {
+    console.error("❌ No account available for minting. Please check your environment variables.");
+    return false;
+  }
+
   const amount = "1000000000"; // 10 tokens with 8 decimals
 
   const payload = {
@@ -263,9 +290,9 @@ async function fund_dst_escrow() {
   const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
   const secret_hash = hexToUint8Array(ethers.keccak256(secret));
 
-  // ✅ ADDED: Predict order ID
-  const nextOrderId = await getNextOrderId();
-  console.log(`📋 fund_dst_escrow will create order ID: ${nextOrderId}`);
+  // // ✅ ADDED: Predict order ID
+  // const nextOrderId = await getNextOrderId();
+  // console.log(`📋 fund_dst_escrow will create order ID: ${nextOrderId}`);
 
   const payload = {
     type: "entry_function_payload",
@@ -282,12 +309,13 @@ async function fund_dst_escrow() {
   const success = await signAndSubmit(payload, "Funding destination escrow");
 
   if (success) {
-    console.log(`✅ Order ${nextOrderId} funded successfully`);
-    return nextOrderId;
+    console.log(`✅ Order  funded successfully`);
+    return true;
   } else {
     console.log("❌ Failed to fund destination escrow");
     return -1;
   }
+  
 }
 
 // ✅ ENHANCED: Dynamic order ID and better error handling
@@ -313,7 +341,7 @@ async function claim_funds(orderId: number, account?: AptosAccount) {
     arguments: [orderId.toString(), secret],
   };
 
-  return await signAndSubmit(payload, `Claiming funds from order ${orderId}`, account);
+  return await signAndSubmit(payload, `Claiming funds from order ${orderId}`, account || userAccount || undefined);
 }
 
 // ✅ ENHANCED: Dynamic order ID and better error handling
@@ -443,6 +471,20 @@ function hexToUint8Array(hex: string): Uint8Array {
   return byteArray;
 }
 
+// ✅ ADDED: Function to check if accounts are properly configured
+function areAccountsConfigured(): boolean {
+  return account !== null && userAccount !== null;
+}
+
+// ✅ ADDED: Function to get account info
+function getAccountInfo() {
+  return {
+    account: account ? account.address().hex() : null,
+    userAccount: userAccount ? userAccount.address().hex() : null,
+    configured: areAccountsConfigured()
+  };
+}
+
 export {
   fund_dst_escrow,
   claim_funds,
@@ -451,5 +493,11 @@ export {
   initialize_swap_ledger,
   getOrderDetails,
   getNextOrderId,
-  testCompleteFlow
+  testCompleteFlow,
+  account,
+  userAccount,
+  hexToUint8Array,
+  areAccountsConfigured,
+  getAccountInfo,
+  getBalance
 }

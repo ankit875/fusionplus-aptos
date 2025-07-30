@@ -1,9 +1,15 @@
 {
   "dependencies": {
+    "@1inch/cross-chain-sdk": "^0.1.15",
+    "@1inch/fusion-sdk": "^2.3.5",
+    "@aptos-labs/ts-sdk": "^3.1.3",
+    "aptos": "^1.21.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "ethers": "^6.15.0",
     "express": "^5.1.0",
     "morgan": "^1.10.1",
+    "path": "^0.12.7",
     "swagger-autogen": "^2.23.7",
     "swagger-ui-express": "^5.0.1",
     "typescript": "^5.8.3",
@@ -13,6 +19,11 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/morgan": "^1.9.10",
-    "@types/swagger-ui-express": "^4.1.8"
+    "@types/swagger-ui-express": "^4.1.8",
+    "@types/bun": "latest"
+  },
+  "name": "relayer",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
   }
 }

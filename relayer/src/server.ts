@@ -6,7 +6,7 @@ import relayerRoutes from './routes/relayer';
 import resolverRoutes from './routes/resolver';
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3002;
 
 // Middleware
 app.use(cors());
