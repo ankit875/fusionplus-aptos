@@ -242,7 +242,7 @@ describe('Resolver example', () => {
             console.log(`=== Completed Ethereum -> Aptos swap run: ${1} ===\n`)
         })
 
-        it.skip('should swap Ethereum SBL -> Aptos FRESH [Demonstrate complete swap]', async () => {
+        it('should swap Ethereum SBL -> Aptos FRESH [Demonstrate complete swap]', async () => {
             console.log(`\n=== Starting Ethereum -> Aptos swap run: 2 ===`)
 
             console.log("Note: Run 2 demonstrates the complete cross-chain swap")

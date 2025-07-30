@@ -29,7 +29,7 @@ async function getNextOrderId(): Promise<number> {
   try {
     let counter = 0;
 
-    while (counter < 50) { // Safety limit
+    while (counter < 5000) { // Safety limit
       try {
         await client.view({
           function: `${MODULE_ADDRESS}::swap_v3::get_order_details`,
