@@ -80,5 +80,3 @@ go.work
 /artifacts
 /typechain-types
 /cache
-
-ui/
