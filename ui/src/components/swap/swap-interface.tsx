@@ -15,9 +15,47 @@ import { useTokenBalance } from '@/hooks/use-token-balance'
 import { CHAIN_IDS } from '@/lib/tokens'
 import toast from 'react-hot-toast'
 
+interface OrderPayload {
+  maker: string
+  makingAmount: string
+  takingAmount: string
+  makerAsset: string
+  takerAsset: string
+  srcChainId: number
+  dstChainId: number
+  secret: string
+}
+
+interface CreatedOrder {
+  id?: string
+  order: any
+  extension: string
+  typedData?: {
+    domain: any
+    types: { [key: string]: any }
+    primaryType: string
+    message: any
+  }
+  orderHash: string
+}
+
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string; params?: any[] }) => Promise<any>
+      isMetaMask?: boolean
+    }
+  }
+}
+
 export function SwapInterface() {
   const [showSettings, setShowSettings] = useState(false)
   const [validationError, setValidationError] = useState<string | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [signing, setSigning] = useState<boolean>(false)
+  const [createdOrder, setCreatedOrder] = useState<CreatedOrder | null>(null)
+  const [signature, setSignature] = useState<string | null>(null)
+  const [filledOrder, setFilledOrder] = useState<any>(null)
   
   const {
     fromToken,
@@ -37,9 +75,8 @@ export function SwapInterface() {
     setIsLoading,
   } = useSwapStore()
 
-  const { isConnected: isEvmConnected } = useAccount()
+  const { isConnected: isEvmConnected, address: userAddress } = useAccount()
   const { connected: isAptosConnected } = useWallet()
-  
   const { balance: fromTokenBalance } = useTokenBalance(fromToken)
 
   // Validation logic
@@ -54,13 +91,11 @@ export function SwapInterface() {
       return
     }
     
-    // Check if user has sufficient balance
     if (parseFloat(fromAmount) > parseFloat(fromTokenBalance)) {
       setValidationError('Insufficient balance')
       return
     }
     
-    // Check wallet connections
     const fromChainIsAptos = fromChain === CHAIN_IDS.APTOS
     const toChainIsAptos = toChain === CHAIN_IDS.APTOS
     
@@ -84,51 +119,186 @@ export function SwapInterface() {
       return
     }
     
-    // Mock quote calculation
     const mockQuote = (parseFloat(fromAmount) * 0.998).toString()
     setToAmount(mockQuote)
   }, [fromToken, toToken, fromAmount, fromTokenBalance, isEvmConnected, isAptosConnected, fromChain, toChain, setToAmount])
 
-  const handleSwap = async () => {
-    if (validationError) {
-      toast.error(validationError)
-      return
-    }
+  const orderPayload: OrderPayload = {
+    maker: userAddress || '0xAF8AE7A70f3E0158d4587B642E6d60c9Da8Faa1D',
+    makingAmount: fromAmount ? (parseFloat(fromAmount) * 1e6).toString() : '0',
+    takingAmount: toAmount ? (parseFloat(toAmount) * 1e6).toString() : '0',
+    makerAsset: fromToken?.address || '0x51B6c8FAb037fBf365CF43A02c953F2305e70bb4',
+    takerAsset: toToken?.address || '0x0000000000000000000000000000000000000000',
+    srcChainId: fromChain || 11155111,
+    dstChainId: toChain || 8453,
+    secret: 'my_secret_password_for_swap_test',
+  }
+
+  const createOrder = async (): Promise<void> => {
+    setLoading(true)
+    setValidationError(null)
     
     try {
-      setIsLoading(true)
-      
-      // Mock swap logic - replace with actual swap implementation
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      toast.success('Swap completed successfully!')
-      setFromAmount('')
-      setToAmount('')
-    } catch (error) {
-      toast.error('Swap failed. Please try again.')
-      console.error('Swap error:', error)
+      const response = await fetch('http://localhost:3002/relayer/createOrder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(orderPayload),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        console.log('Order created:', data)
+        setCreatedOrder(data)
+        toast.success('Order created successfully!')
+      } else {
+        setValidationError(`API Error: ${response.status} - ${data.message || 'Unknown error'}`)
+        toast.error('Failed to create order')
+      }
+    } catch (err) {
+      setValidationError(`Network Error: ${err instanceof Error ? err.message : 'Failed to connect to server'}`)
+      toast.error('Network error occurred')
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const isSwapDisabled = () => {
+  const fillOrder = async (sig: string) => {
+    if (!createdOrder) {
+      setValidationError('Order missing')
+      toast.error('Order missing')
+      return
+    }
+
+    setLoading(true)
+    
+    try {
+      const response = await fetch('http://localhost:3002/relayer/fillOrder', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          order: createdOrder.order,
+          extension: createdOrder.extension,
+          orderHash: createdOrder.orderHash,
+          signature: sig,
+          srcChainId: fromChain || 11155111,
+        }),
+      })
+
+      const data = await response.json()
+      if (response.ok) {
+        console.log('Order filled:', data)
+        setFilledOrder(data)
+        toast.success('Order filled successfully!')
+        setFromAmount('')
+        setToAmount('')
+        setCreatedOrder(null)
+        setSignature(null)
+      } else {
+        setValidationError(`API Error: ${response.status} - ${data.message || 'Unknown error'}`)
+        toast.error('Failed to fill order')
+      }
+    } catch (err) {
+      setValidationError(`Network Error: ${err instanceof Error ? err.message : 'Failed to connect to server'}`)
+      toast.error('Network error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signOrder = async (): Promise<void> => {
+    if (!window.ethereum) {
+      setValidationError('Wallet not available')
+      toast.error('Wallet not available')
+      return
+    }
+
+    if (!userAddress) {
+      setValidationError('Wallet not connected')
+      toast.error('Wallet not connected')
+      return
+    }
+
+    if (!createdOrder || !createdOrder.typedData) {
+      setValidationError('No order to sign')
+      toast.error('No order to sign')
+      return
+    }
+
+    setSigning(true)
+    setValidationError(null)
+
+    try {
+      const { typedData } = createdOrder
+
+      const signature = await window.ethereum.request({
+        method: 'eth_signTypedData_v4',
+        params: [
+          userAddress,
+          JSON.stringify({
+            domain: typedData.domain,
+            types: {
+              EIP712Domain: [
+                { name: 'name', type: 'string' },
+                { name: 'version', type: 'string' },
+                { name: 'chainId', type: 'uint256' },
+                { name: 'verifyingContract', type: 'address' },
+              ],
+              ...typedData.types,
+            },
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          }),
+        ],
+      })
+      console.log('Signature: created...', signature)
+      setSignature(signature)
+      toast.success('Order signed successfully!')
+      
+      // Pass signature directly to fillOrder
+      await fillOrder(signature)
+    } catch (err) {
+      setValidationError(`Failed to sign order: ${err instanceof Error ? err.message : 'Unknown error'}`)
+      toast.error('Failed to sign order')
+    } finally {
+      setSigning(false)
+    }
+  }
+
+  const handleAction = async () => {
+    if (!createdOrder) {
+      await createOrder()
+    } else if (!signature) {
+      await signOrder()
+    }
+  }
+
+  const isActionDisabled = () => {
     return (
       !fromToken ||
       !toToken ||
       !fromAmount ||
       parseFloat(fromAmount) <= 0 ||
       !!validationError ||
-      isLoading
+      loading ||
+      signing ||
+      (createdOrder && signature && !filledOrder)
     )
   }
 
-  const getSwapButtonText = () => {
-    if (isLoading) return 'Swapping...'
+  const getActionButtonText = () => {
+    if (loading) return 'Processing...'
+    if (signing) return 'Please sign in wallet...'
     if (validationError) return validationError
     if (!fromToken || !toToken) return 'Select tokens'
     if (!fromAmount || parseFloat(fromAmount) <= 0) return 'Enter amount'
-    return 'Swap'
+    if (filledOrder) return 'Order Completed'
+    if (signature) return 'Order Signed'
+    if (createdOrder) return 'Sign Order'
+    return 'Create Order'
   }
 
   return (
@@ -217,20 +387,35 @@ export function SwapInterface() {
           </div>
         </div>
 
-        {/* Error Display */}
+        {/* Status Display */}
+        {createdOrder && !signature && (
+          <div className="text-sm text-green-500 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+            Order created successfully. Please sign the order.
+          </div>
+        )}
+        {signature && !filledOrder && (
+          <div className="text-sm text-green-500 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+            Order signed successfully. Awaiting fill confirmation.
+          </div>
+        )}
+        {filledOrder && (
+          <div className="text-sm text-green-500 bg-green-50 dark:bg-green-900/20 p-2 rounded">
+            Order filled successfully!
+          </div>
+        )}
         {validationError && (
           <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 p-2 rounded">
             {validationError}
           </div>
         )}
 
-        {/* Swap Button */}
+        {/* Action Button */}
         <Button 
           className="w-full" 
-          onClick={handleSwap}
-          disabled={isSwapDisabled()}
+          onClick={handleAction}
+          disabled={isActionDisabled()}
         >
-          {getSwapButtonText()}
+          {getActionButtonText()}
         </Button>
       </CardContent>
     </Card>

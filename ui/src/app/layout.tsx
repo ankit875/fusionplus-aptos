@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: '8inch Cross-Chain Swap',
+  title: 'Fusion+ Cross-Chain Aptos',
   description: 'Cross-chain swap interface for EVM and Aptos blockchains',
 }
 

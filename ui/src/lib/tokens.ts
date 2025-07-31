@@ -2,6 +2,7 @@ import type { Token } from '@/store/swap-store'
 
 export const CHAIN_IDS = {
   ETHEREUM: 1,
+  ETHEREUM_SEPOLIA: 11155111,
   BSC: 56,
   POLYGON: 137,
   ARBITRUM: 42161,
@@ -14,6 +15,12 @@ export const CHAINS = [
   {
     id: CHAIN_IDS.ETHEREUM,
     name: 'Ethereum',
+    symbol: 'ETH',
+    logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
+  },
+  {
+    id: CHAIN_IDS.ETHEREUM_SEPOLIA,
+    name: 'Ethereum Sepolia',
     symbol: 'ETH',
     logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
   },
@@ -36,6 +43,12 @@ export const CHAINS = [
     logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
   },
   {
+    id: CHAIN_IDS.BASE,
+    name: 'Base',
+    symbol: 'ETH',
+    logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
+  },
+  {
     id: CHAIN_IDS.APTOS,
     name: 'Aptos',
     symbol: 'APT',
@@ -45,6 +58,14 @@ export const CHAINS = [
 
 export const TOKENS_BY_CHAIN: Record<number, Token[]> = {
   [CHAIN_IDS.ETHEREUM]: [
+    {
+      address: '0x51B6c8FAb037fBf365CF43A02c953F2305e70bb4',
+      symbol: 'SBLGRH',
+      name: 'Sabalgarh',
+      decimals: 18,
+      chainId: CHAIN_IDS.ETHEREUM,
+      logoURI: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxCvkWMuKJM7h30wn9uVjnYWcx-qNEu1_dGw&s',
+    },
     {
       address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
       symbol: 'ETH',
@@ -75,6 +96,58 @@ export const TOKENS_BY_CHAIN: Record<number, Token[]> = {
       name: 'Dai Stablecoin',
       decimals: 18,
       chainId: CHAIN_IDS.ETHEREUM,
+      logoURI: 'https://tokens.1inch.io/0x6b175474e89094c44da98b954eedeac495271d0f.png',
+    },
+  ],
+  [CHAIN_IDS.ETHEREUM_SEPOLIA]: [
+    {
+      address: '0x51B6c8FAb037fBf365CF43A02c953F2305e70bb4',
+      symbol: 'SBLGRH',
+      name: 'Sabalgarh',
+      decimals: 18,
+      chainId: CHAIN_IDS.ETHEREUM_SEPOLIA,
+      logoURI: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRxCvkWMuKJM7h30wn9uVjnYWcx-qNEu1_dGw&s',
+    },
+    {
+      address: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      chainId: CHAIN_IDS.ETHEREUM_SEPOLIA,
+      logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
+    },
+    {
+      address: '0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238',
+      symbol: 'USDC',
+      name: 'USD Coin (Sepolia)',
+      decimals: 6,
+      chainId: CHAIN_IDS.ETHEREUM_SEPOLIA,
+      logoURI: 'https://tokens.1inch.io/0xa0b86a33e6441d147eec6b0fb6a44dafb51d7b6a.png',
+    },
+  ],
+  [CHAIN_IDS.BASE]: [
+    {
+      address: '0x0000000000000000000000000000000000000000',
+      symbol: 'ETH',
+      name: 'Ethereum',
+      decimals: 18,
+      chainId: CHAIN_IDS.BASE,
+      logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
+    },
+    {
+      address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+      symbol: 'USDC',
+      name: 'USD Coin',
+      decimals: 6,
+      chainId: CHAIN_IDS.BASE,
+      logoURI: 'https://tokens.1inch.io/0xa0b86a33e6441d147eec6b0fb6a44dafb51d7b6a.png',
+    },
+    {
+      address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb',
+      symbol: 'DAI',
+      name: 'Dai Stablecoin',
+      decimals: 18,
+      chainId: CHAIN_IDS.BASE,
       logoURI: 'https://tokens.1inch.io/0x6b175474e89094c44da98b954eedeac495271d0f.png',
     },
   ],

@@ -1,4 +1,4 @@
-import { AptosAccount, AptosClient, TxnBuilderTypes, BCS } from "aptos";
+import { AptosAccount, AptosClient } from "aptos";
 import * as dotenv from "dotenv";
 import { ethers } from "ethers";
 import * as path from "path";
@@ -8,10 +8,6 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const NODE = "https://fullnode.testnet.aptoslabs.com/v1";
 const MODULE_ADDRESS = "0x6a33e62028e210d895c22c631c17c856cf774c887785357672636db8530e6226";
-
-const privateKey = process.env.PRIVKEY 
-const address = process.env.ADDR 
-console.log({ privateKey, address });
 
 // Use the SAME private key you used with the CLI
 let account: AptosAccount | null = null;
@@ -129,12 +125,12 @@ async function signAndSubmit(payload: any, description?: string, acc?: AptosAcco
   }
 }
 
-async function getBalance() {
+async function getBalance(module_address: string) {
   try {
-    console.log("🔍 Checking address:", MODULE_ADDRESS);
+    console.log("🔍 Checking address:", module_address);
 
     // Check if account exists
-    const accountInfo = await client.getAccount(MODULE_ADDRESS);
+    const accountInfo = await client.getAccount(module_address);
     console.log("✅ Account exists! Sequence number:", accountInfo.sequence_number, accountInfo);
 
     // Alternative: Check account balance using view function
@@ -142,7 +138,7 @@ async function getBalance() {
       const [balance] = await client.view({
         function: "0x1::coin::balance",
         type_arguments: ["0x1::aptos_coin::AptosCoin"],
-        arguments: [MODULE_ADDRESS],
+        arguments: [module_address],
       });
       console.log("✅ APT Balance (View function):", balance, "octas");
       console.log("✅ APT Balance (View function):", (Number(balance) / 100000000).toFixed(8), "APT");
@@ -280,28 +276,28 @@ async function anounce_order() {
   }
 }
 
+type FundDstEscrowParams = {cointype: string, dstAmount: number, duration: number, secret_hash: Uint8Array }
 // ✅ ENHANCED: With order ID prediction
-async function fund_dst_escrow() {
-  const SRC_COIN_TYPE =
-    `${MODULE_ADDRESS}::my_token::SimpleToken`;
+async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash }: FundDstEscrowParams) {
+  // const SRC_COIN_TYPE =
+  //   `${MODULE_ADDRESS}::my_token::SimpleToken`;
 
-  const dst_amount = 1e8;
-  const expiration_duration_secs = Math.floor(Date.now() / 1000) + 3600;
-  const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
-  const secret_hash = hexToUint8Array(ethers.keccak256(secret));
-
+  // const dst_amount = 1e8;
+  // const expiration_duration_secs = Math.floor(Date.now() / 1000) + 3600;
+  // const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+  // const secret_hash = hexToUint8Array(ethers.keccak256(secret));
   // // ✅ ADDED: Predict order ID
-  // const nextOrderId = await getNextOrderId();
-  // console.log(`📋 fund_dst_escrow will create order ID: ${nextOrderId}`);
+  const nextOrderId = await getNextOrderId();
+  console.log(`📋 fund_dst_escrow will create order ID: ${nextOrderId}`);
 
   const payload = {
     type: "entry_function_payload",
     function:
       `${MODULE_ADDRESS}::swap_v3::fund_dst_escrow`,
-    type_arguments: [SRC_COIN_TYPE],
+    type_arguments: [cointype],
     arguments: [
-      dst_amount.toString(),
-      expiration_duration_secs.toString(),
+      dstAmount.toString(),
+      duration.toString(),
       secret_hash,
     ],
   };
@@ -310,7 +306,7 @@ async function fund_dst_escrow() {
 
   if (success) {
     console.log(`✅ Order  funded successfully`);
-    return true;
+    return nextOrderId;
   } else {
     console.log("❌ Failed to fund destination escrow");
     return -1;
@@ -319,11 +315,11 @@ async function fund_dst_escrow() {
 }
 
 // ✅ ENHANCED: Dynamic order ID and better error handling
-async function claim_funds(orderId: number, account?: AptosAccount) {
+async function claim_funds(orderId: number, secret: Uint8Array, account?: AptosAccount) {
   const SRC_COIN_TYPE =
     `${MODULE_ADDRESS}::my_token::SimpleToken`;
 
-  const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+  // const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
 
   console.log(`📋 Attempting to claim from order ID: ${orderId}`);
 
@@ -426,7 +422,7 @@ async function testCompleteFlow() {
 // ✅ ADDED: Command line interface
 async function main() {
   // Setup functions
-  await getBalance();
+  // await getBalance();
   // await check_token_initialized();
   // await register_token();
   // await mint_tokens();
@@ -435,10 +431,15 @@ async function main() {
 
   // Swap functions
   // await anounce_order();
-  // await fund_dst_escrow();
+
+  // const dst_amount = 1e8;
+  // const expiration_duration_secs = Math.floor(Date.now() / 1000) + 3600;
+  // const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+  // const secret_hash = hexToUint8Array(ethers.keccak256(secret));
+  // await fund_dst_escrow({cointype:aptosconfig.tokenType,dstAmount: dst_amount,duration: expiration_duration_secs, secret_hash });
 
   // Dynamic functions with order IDs
-  // await claim_funds(24); // Replace 8 with your order ID
+  // await claim_funds(83); // Replace 8 with your order ID
   // await cancel_swap(23); // Replace 7 with your order ID
   // await getOrderDetails(5); // Replace 5 with your order ID
 
@@ -453,7 +454,7 @@ async function main() {
 }
 
 // Run the script
-main().catch(console.error);
+// main().catch(console.error);
 
 function hexToUint8Array(hex: string): Uint8Array {
   if (hex.startsWith("0x")) {

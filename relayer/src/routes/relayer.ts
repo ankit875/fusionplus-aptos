@@ -11,13 +11,14 @@ import {
     AmountMode,
     Extension
 } from '@1inch/cross-chain-sdk';
-import { uint8ArrayToHex } from '@1inch/byte-utils';
+import { hexToUint8Array, uint8ArrayToHex } from '@1inch/byte-utils';
 import { Resolver as EthereumResolverContract } from '../lib/resolver.js';
 import { config as ethereumConfig } from '../scripts/deployEscrowFactory.js';
 import { Wallet } from '../lib/wallet.js';
 import { aptosconfig, provider } from './config.js';
 import { AptosClient } from "aptos";
-
+import { claim_funds, fund_dst_escrow, getBalance } from '../lib/aptos.js';
+import { getdb } from '../../db.js';
 
 const router = express.Router();
 
@@ -72,8 +73,6 @@ router.get('/getQuote', (req, res) => {
     res.json(mockQuote);
 });
 
-const userPk = '7764b03c4d3eb019cc0ec0630429622593b8d7625b83a109e9f2279828a88a66'
-
 // Default values managed by the relayer
 const UINT_40_MAX = 2n ** 40n - 1n;
 /**
@@ -81,7 +80,6 @@ const UINT_40_MAX = 2n ** 40n - 1n;
  * Announces a cross-chain swap order to the relayer using 1inch Cross-Chain SDK
  */
 router.post('/createOrder', async (req, res) => {
-    let ethereumUser = new Wallet(userPk, provider)
     const {
         maker,
         makingAmount,
@@ -114,9 +112,9 @@ router.post('/createOrder', async (req, res) => {
     }
     try {
         const secretBytes = ethers.toUtf8Bytes(secret);
-        const finalSecret = uint8ArrayToHex(secretBytes)
-        const timestamp = BigInt((await provider.getBlock('latest')).timestamp)
-
+        const finalSecret = uint8ArrayToHex(secretBytes);
+        const timestamp = BigInt((await provider.getBlock('latest'))!.timestamp);
+        const orderHash = HashLock.hashSecret(finalSecret);
         const order = CrossChainOrder.new(
             new Address(ethereumConfig.escrowFactoryContractAddress),
             {
@@ -166,8 +164,16 @@ router.post('/createOrder', async (req, res) => {
         )
         const typedData = order.getTypedData(srcChainId)
         const extension = order.extension.encode()
-
-        res.json({ success: true, order: order.build(), typedData, extension })
+        const limitOrder = order.build()
+        const db = await getdb();
+        db.data.orders.push({
+            limitOrder,
+            orderHash,
+            extension
+        });
+        await db.write();
+        console.log(db.data.orders, 'db.data.orders')
+        res.json({ success: true, order: limitOrder, typedData, extension, orderHash });
     } catch (e) {
         return res.status(400).json({ error: 'Failed to create order', details: e.message });
     }
@@ -177,10 +183,10 @@ router.post('/createOrder', async (req, res) => {
 
 
 router.post('/fillOrder', async (req, res) => {
-    const { order, signature, srcChainId, extension } = req.body
+    const { order, signature, srcChainId, extension, orderHash } = req.body
 
     const orderInstance = CrossChainOrder.fromDataAndExtension(order, Extension.decode(extension))
-    const orderHash = orderInstance.getOrderHash(srcChainId)
+    // const orderHash = orderInstance.getOrderHash(srcChainId)
     const ethereumResolverWallet = new Wallet(ethereumConfig.resolverPk, provider);
     const resolverContract = new EthereumResolverContract(ethereumConfig.resolverContractAddress, "APTOS_RESOLVER_ADDRESS")
 
@@ -201,11 +207,47 @@ router.post('/fillOrder', async (req, res) => {
     )
     
     console.log(`[Ethereum] Order ${orderHash} filled for ${fillAmount} USDC in tx: ${orderFillHash}`)
-    
-    // const balance = await getEthereumBalances(config.chain.ethereum.tokens.USDC.address);
-    // console.log("######### Balance after eth order filled ##########")
+    /**
+ * 
+ * cointype,
+ * dst_amount,
+ * expiration_duration_secs,
+ * secret_hash
+ */ 
+    const cointype = aptosconfig.tokenType;
+    const dstAmount = Number(orderInstance.takingAmount.toString());
+    const duration=Math.floor(Date.now() / 1000) + 3600
+    // const expirationDurationSecs = orderInstance.deadline;
+const secretHashU8 = new Uint8Array(ethers.getBytes(orderHash))
 
-    res.json({ succeess: true })
+//     const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+//   const secret_hash = hexToUint8Array(ethers.keccak256(secret));
+// //     const secretHash = orderInstance.escrowExtension.hashLockInfo;
+// //     console.log("######### Secret Hash ##########", secretHash)
+
+// //     const secretHex = ethers.hexlify(orderHash); // or use your uint8ArrayToHex function
+// // const orderHashHex = HashLock.hashSecret(secretHex);
+// const orderHash1 = hexToUint8Array(orderHashHex);
+//     console.log("######### Order Hash ##########", orderHash1)
+
+    // console.log(typeof secretHash, typeof ethers.keccak256(secret), ' secret_hash: ', secret_hash, 'secret', secret, 'newsecret', ethers.keccak256(secret))
+    const balance = await getBalance(aptosconfig.moduleAddress);
+    console.log("######### Balance of destination  ##########", balance);
+    const orderId = await fund_dst_escrow({
+        cointype,
+        dstAmount,
+        duration,
+        secret_hash:secretHashU8
+    });
+    const balance1 = await getBalance(aptosconfig.moduleAddress);
+    console.log("######### Balance of destination  ##########", balance1);
+    console.log("######### Funded destination escrow ##########", orderId);
+
+    const originalSecret= ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+    await claim_funds(orderId, originalSecret);
+    const balance2 = await getBalance(aptosconfig.moduleAddress);
+    console.log("######### Balance of destination  ##########", balance2);
+    res.json({ success: true })
 
 
 })

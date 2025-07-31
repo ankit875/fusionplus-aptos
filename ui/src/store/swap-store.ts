@@ -41,8 +41,8 @@ export const useSwapStore = create<SwapState>()(
     toToken: null,
     fromAmount: '',
     toAmount: '',
-    fromChain: 1, // Ethereum mainnet
-    toChain: 1, // Ethereum mainnet
+    fromChain: 11155111, // Ethereum Sepolia testnet
+    toChain: 8453, // Base mainnet
     slippage: 0.5,
     isLoading: false,
     quote: null,

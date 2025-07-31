@@ -1,0 +1,14 @@
+import { Low } from 'lowdb';
+import { JSONFilePreset } from 'lowdb/node';
+import type { QuoterResponse, SerializedOrder } from './types';
+
+type Data = {
+  quotes: QuoterResponse[],
+  orders: SerializedOrder[]
+}
+
+const defaultData: Data = { quotes: [], orders: [] }
+
+export const getdb = async() =>{
+    return await JSONFilePreset<Data>('db_data.json', defaultData)
+}  

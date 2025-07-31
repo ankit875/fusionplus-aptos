@@ -30,8 +30,8 @@ export function Header() {
   return (
     <header className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
       <div className="flex items-center space-x-4">
-        <h1 className="text-2xl font-bold text-primary">8inch</h1>
-        <span className="text-sm text-muted-foreground">Cross-Chain Swap</span>
+        <h1 className="text-2xl font-bold text-primary">Fusion+ Aptos</h1>
+        {/* <span className="text-sm text-muted-foreground">Cross-Chain Swap</span> */}
       </div>
       
       <div className="flex items-center space-x-4">

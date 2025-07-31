@@ -8,7 +8,7 @@ export default function Home() {
       <Header />
       <div className="mt-8 flex justify-center">
         <SwapInterface />
-         <CreateOrderComponent />
+         {/* <CreateOrderComponent /> */}
       </div>
     </main>
   )
