@@ -21,6 +21,7 @@ interface OrderPayload {
   takingAmount: string
   makerAsset: string
   takerAsset: string
+  receiverAddress?: string // Optional for Aptos, required for EVM
   srcChainId: number
   dstChainId: number
   secret: string
@@ -76,7 +77,7 @@ export function SwapInterface() {
   } = useSwapStore()
 
   const { isConnected: isEvmConnected, address: userAddress } = useAccount()
-  const { connected: isAptosConnected } = useWallet()
+  const { connected: isAptosConnected, account } = useWallet()
   const { balance: fromTokenBalance } = useTokenBalance(fromToken)
 
   // Validation logic
@@ -129,11 +130,12 @@ export function SwapInterface() {
     takingAmount: toAmount ? (parseFloat(toAmount) * 1e6).toString() : '0',
     makerAsset: fromToken?.address || '0x51B6c8FAb037fBf365CF43A02c953F2305e70bb4',
     takerAsset: toToken?.address || '0x0000000000000000000000000000000000000000',
+    receiverAddress: account?.address,
     srcChainId: fromChain || 11155111,
     dstChainId: toChain || 8453,
     secret: 'my_secret_password_for_swap_test',
   }
-
+  console.log('Order Payload:', account?.address)
   const createOrder = async (): Promise<void> => {
     setLoading(true)
     setValidationError(null)

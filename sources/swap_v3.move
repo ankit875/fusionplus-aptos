@@ -184,7 +184,8 @@ module myapttoken::swap_v3 {
     resolver: &signer,
     dst_amount: u64,
     expiration_duration_secs: u64,
-    secret_hash: vector<u8>
+    secret_hash: vector<u8>,
+    maker_address: address
     ) acquires SwapLedger {
         let module_addr = get_ledger_address();
         assert!(exists<SwapLedger>(module_addr), ESWAP_LEDGER_DOES_NOT_EXIST);
@@ -214,7 +215,7 @@ module myapttoken::swap_v3 {
          // Create order with funded status
         let order = OrderMetadata {
             id: order_id,
-            maker_address: @0x0,
+            maker_address,
             escrow_address: dst_escrow_addr,
             escrow_cap: escrow_cap,
             coin_type: type_info::type_of<CoinType>(),
@@ -257,6 +258,7 @@ module myapttoken::swap_v3 {
         assert!(type_info::type_of<SrcCoinType>() == order.coin_type, EINVALID_COIN_TYPE);
 
         // Store the revealed secret
+        let maker_address = order.maker_address;
         order.revealed_secret = secret;
 
         // Transfer funds from escrow to resolver
@@ -269,7 +271,7 @@ module myapttoken::swap_v3 {
 
         // Withdraw from escrow and deposit to resolver
         let coins = coin::withdraw<SrcCoinType>(&escrow_signer, order.amount);
-        coin::deposit(signer::address_of(resolver), coins);
+        coin::deposit(maker_address, coins);
     }
 
     /// Cancel swap - returns funds to maker if order has expired

@@ -6,8 +6,8 @@ import * as path from "path";
 // Load .env from the root directory (two levels up from current file)
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
-const NODE = "https://fullnode.testnet.aptoslabs.com/v1";
-const MODULE_ADDRESS = "0x6a33e62028e210d895c22c631c17c856cf774c887785357672636db8530e6226";
+const NODE = process.env.DESTINATION_NODE 
+const MODULE_ADDRESS = process.env.MODULE_ADDRESS;
 
 // Use the SAME private key you used with the CLI
 let account: AptosAccount | null = null;
@@ -226,7 +226,7 @@ async function checkTokenBalance() {
 // ✅ ENHANCED: Initialize swap ledger with dynamic coin type
 async function initialize_swap_ledger() {
   const SRC_COIN_TYPE =
-    `${MODULE_ADDRESS}::my_token::SimpleToken`;
+    `${process.env.TOKEN_TYPE}`;
 
   const payload = {
     type: "entry_function_payload",
@@ -241,7 +241,7 @@ async function initialize_swap_ledger() {
 // ✅ ENHANCED: With order ID prediction
 async function anounce_order() {
   const SRC_COIN_TYPE =
-    `${MODULE_ADDRESS}::my_token::SimpleToken`;
+    `${process.env.TOKEN_TYPE}`;
   const srcAmount = 1e8;
   const minDstAmount = 1e8;
   const expiresInSecs = 3_600; // 1 hour
@@ -276,9 +276,10 @@ async function anounce_order() {
   }
 }
 
-type FundDstEscrowParams = {cointype: string, dstAmount: number, duration: number, secret_hash: Uint8Array }
+type FundDstEscrowParams = {cointype: string, dstAmount: number, duration: number, secret_hash: Uint8Array, recieverAddress: string }
 // ✅ ENHANCED: With order ID prediction
-async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash }: FundDstEscrowParams) {
+async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash,recieverAddress }: FundDstEscrowParams) {
+
   // const SRC_COIN_TYPE =
   //   `${MODULE_ADDRESS}::my_token::SimpleToken`;
 
@@ -299,6 +300,7 @@ async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash }: F
       dstAmount.toString(),
       duration.toString(),
       secret_hash,
+      recieverAddress, // Use the provided receiver address
     ],
   };
 
@@ -317,7 +319,7 @@ async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash }: F
 // ✅ ENHANCED: Dynamic order ID and better error handling
 async function claim_funds(orderId: number, secret: Uint8Array, account?: AptosAccount) {
   const SRC_COIN_TYPE =
-    `${MODULE_ADDRESS}::my_token::SimpleToken`;
+    `${process.env.TOKEN_TYPE}`;
 
   // const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
 
