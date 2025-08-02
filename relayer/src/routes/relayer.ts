@@ -1,3 +1,4 @@
+
 import express from 'express';
 import { ethers } from 'ethers';
 import {
@@ -7,16 +8,18 @@ import {
     HashLock,
     TimeLocks, randBigInt, Extension,
     TakerTraits,
-    AmountMode
+    AmountMode,
+    EscrowFactory as SdkEscrowFactory
 } from '@1inch/cross-chain-sdk';
 import { uint8ArrayToHex } from '@1inch/byte-utils';
 import { Resolver as EthereumResolverContract } from '../lib/resolver.js';
 import { config as ethereumConfig } from '../scripts/deployEscrowFactory.js';
 import { Wallet } from '../lib/wallet.js';
-import {  provider } from './config.js';
+import {  CHAIN_IDS, CHAIN_IDS_CONFIG, provider } from './config.js';
 import { getdb } from '../../db.js';
 import { createReceiverAddress, getAptosReceiverAddress } from '../utils/aptosAddress.js';
-import { claim_funds, fund_dst_escrow } from '../lib/aptos.js';
+import { anounce_order, claim_funds, fund_dst_escrow } from '../lib/aptos.js';
+import { EscrowFactory } from '../lib/escrow-factory.js';
 
 const router = express.Router();
 const cointype = process.env.TOKEN_TYPE || ''
@@ -79,7 +82,7 @@ router.post('/createOrder', async (req, res) => {
         takingAmount,
         makerAsset,
         takerAsset,
-        receiverAddress,
+        receiver,
         secret,
         srcChainId,
         dstChainId       // Hash of the secret for escrow
@@ -92,7 +95,7 @@ router.post('/createOrder', async (req, res) => {
         !dstChainId ||
         !makerAsset ||
         !takerAsset ||
-        !receiverAddress ||
+        !receiver ||
         !makingAmount ||
         !takingAmount ||
         !secret
@@ -101,16 +104,19 @@ router.post('/createOrder', async (req, res) => {
             error: 'Missing required parameters',
             required: [
                 'makerAddress', 'srcChainId', 'dstChainId', 'srcTokenAddress',
-                'dstTokenAddress', 'receiverAddress', 'srcAmount', 'dstAmount', 'secretHash', 'signature'
+                'dstTokenAddress', 'receiver', 'srcAmount', 'dstAmount', 'secretHash', 'signature'
             ]
         });
     }
     try {
 
-        console.log('Creating order with parameters:', receiverAddress, srcChainId, dstChainId, makerAsset, takerAsset, makingAmount, takingAmount, secret);
-        const processedReceiver = createReceiverAddress(receiverAddress);
-
-
+        const sourceChainId = CHAIN_IDS_CONFIG[srcChainId as keyof typeof CHAIN_IDS_CONFIG]
+        const destChainId =CHAIN_IDS_CONFIG[dstChainId as keyof typeof CHAIN_IDS_CONFIG]
+         console.log(srcChainId, destChainId, 'sourceChainId, destChainId',sourceChainId);
+        const processedReceiver = sourceChainId === CHAIN_IDS?.ETHEREUM ? createReceiverAddress(receiver) : receiver;
+        const processedMaker = sourceChainId === CHAIN_IDS?.ETHEREUM ?  maker: createReceiverAddress(maker) ;
+       
+        console.log('Processed Receiver:', sourceChainId === CHAIN_IDS?.ETHEREUM, processedReceiver, 'Processed Maker:', processedMaker, maker, receiver);
         const secretBytes = ethers.toUtf8Bytes(secret);
         const finalSecret = uint8ArrayToHex(secretBytes);
         const timestamp = BigInt((await provider.getBlock('latest'))!.timestamp);
@@ -119,12 +125,12 @@ router.post('/createOrder', async (req, res) => {
             new Address(ethereumConfig.escrowFactoryContractAddress),
             {
                 salt: randBigInt(1000n),
-                maker: new Address(maker),
+                maker: new Address(processedMaker),
                 makingAmount: BigInt(makingAmount), // 1 USDC
                 takingAmount: BigInt(takingAmount), // Equivalent amount on Aptos
                 makerAsset: new Address(makerAsset),
                 takerAsset: new Address(takerAsset),
-                receiver: processedReceiver // Receiver address on Aptos,
+                receiver: new Address(processedReceiver), // Receiver address on Aptos,
             },
             {
                 hashLock: HashLock.forSingleFill(finalSecret),
@@ -137,8 +143,8 @@ router.post('/createOrder', async (req, res) => {
                     dstPublicWithdrawal: 100n,    // 100sec private withdrawal
                     dstCancellation: 101n         // 1sec public withdrawal
                 }),
-                srcChainId: 1,
-                dstChainId,
+                srcChainId: sourceChainId,
+                dstChainId: destChainId,
                 srcSafetyDeposit: ethers.parseEther('0.001'),
                 dstSafetyDeposit: ethers.parseEther('0.001')
             },
@@ -163,18 +169,31 @@ router.post('/createOrder', async (req, res) => {
                 allowMultipleFills: false
             }
         )
+        const db = await getdb();
+        // if(sourceChainId == CHAIN_IDS?.ETHEREUM) {
+            // Handle Ethereum specific logic
         const typedData = order.getTypedData(srcChainId)
         const extension = order.extension.encode()
         const limitOrder = order.build()
-        const db = await getdb();
-        db.data.orders.push({
+         db.data.orders.push({
             limitOrder,
             orderHash,
             extension
         });
-        await db.write();
-        console.log(db.data.orders, 'db.data.orders')
+          await db.write();
+       
         res.json({ success: true, order: limitOrder, typedData, extension, orderHash });
+        console.log(db.data.orders, 'db.data.orders')
+        // } else if (sourceChainId == CHAIN_IDS?.APTOS) {
+            // Handle Aptos specific logic
+            // await anounce_order({
+            //     srcAmount: makingAmount,
+            //     minDstAmount: takingAmount,
+            //     expiresInSecs: 3600, // 1 hour
+            //     secretHashHex: hexToUint8Array(ethers.keccak256(stringBytes))
+            // });
+        
+      
     } catch (e) {
         return res.status(400).json({ error: 'Failed to create order', details: e.message });
     }
@@ -223,9 +242,28 @@ router.post('/fillOrder', async (req, res) => {
         secret_hash:secretHashU8,
         recieverAddress: aptosReceiverAddress
     });
-    
 
+    // Fund escrow on Aptos
+    console.log(`[Aptos Testnet] Funding destination escrow for order ${orderHash}`)
+    
+    const ethereumFactory = new EscrowFactory(provider, ethereumConfig.escrowFactoryContractAddress);
+    const ethereumEscrowEvent = await ethereumFactory.getSrcDeployEvent(ethereumDeployBlock)
+
+    const ESCROW_SRC_IMPLEMENTATION = await ethereumFactory.getSourceImpl()
+    const srcEscrowAddress = new SdkEscrowFactory(new Address(ethereumConfig.escrowFactoryContractAddress)).getSrcEscrowAddress(
+        ethereumEscrowEvent[0],
+        ESCROW_SRC_IMPLEMENTATION
+    )
+    // Withdraw funds from Ethereum escrow for resolver
+    console.log(`[Ethereum] Withdrawing funds for resolver from ${srcEscrowAddress}`)
     const originalSecret= ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+    const finalSecret = uint8ArrayToHex(originalSecret);
+
+    const { txHash: resolverWithdrawHash } = await ethereumResolverWallet.send(
+        resolverContract.withdraw('src', srcEscrowAddress, finalSecret, ethereumEscrowEvent[0])
+    )
+    console.log(`[Ethereum] Successfully withdrew funds for resolver in tx: ${resolverWithdrawHash}`)
+    
     await claim_funds(orderId, originalSecret);
    
     res.json({ success: true })

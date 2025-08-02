@@ -82,7 +82,7 @@ export function getAptosReceiverAddress(orderInstance: any): string {
     return ethReceiverAddress;
 }
 
-export function createReceiverAddress(receiverAddress: string): Address {
+export function createReceiverAddress(receiverAddress: string) {
     if (isAptosAddress(receiverAddress)) {
         console.log('📋 Converting Aptos address for SDK compatibility');
         const aptosAddr = new AptosAddress(receiverAddress);
@@ -91,10 +91,10 @@ export function createReceiverAddress(receiverAddress: string): Address {
         // Store mapping for later retrieval
         storeAddressMapping(ethAddr.toString(), receiverAddress);
         
-        return ethAddr;
+        return ethAddr.toString();
     } else {
         console.log('📋 Using Ethereum address as-is');
-        return new Address(receiverAddress);
+        return (receiverAddress);
     }
 }
 

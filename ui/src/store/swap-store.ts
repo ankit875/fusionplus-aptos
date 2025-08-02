@@ -20,7 +20,9 @@ export interface SwapState {
   slippage: number
   isLoading: boolean
   quote: any | null
-  
+  ethAddress: string
+  aptAddress: string
+
   // Actions
   setFromToken: (token: Token | null) => void
   setToToken: (token: Token | null) => void
@@ -31,6 +33,8 @@ export interface SwapState {
   setSlippage: (slippage: number) => void
   setIsLoading: (loading: boolean) => void
   setQuote: (quote: any) => void
+  setEthAddress: (address: string) => void
+  setAptAddress: (address: string) => void
   swapTokens: () => void
   resetSwap: () => void
 }
@@ -46,6 +50,8 @@ export const useSwapStore = create<SwapState>()(
     slippage: 0.5,
     isLoading: false,
     quote: null,
+    ethAddress: '',
+    aptAddress: '',
 
     setFromToken: (token) => set({ fromToken: token }),
     setToToken: (token) => set({ toToken: token }),
@@ -56,14 +62,18 @@ export const useSwapStore = create<SwapState>()(
     setSlippage: (slippage) => set({ slippage }),
     setIsLoading: (loading) => set({ isLoading: loading }),
     setQuote: (quote) => set({ quote }),
+    setEthAddress: (address) => set({ ethAddress: address }),
+    setAptAddress: (address) => set({ aptAddress: address }),
 
     swapTokens: () => {
-      const { fromToken, toToken, fromChain, toChain } = get()
+      const { fromToken, toToken, fromChain, toChain, ethAddress, aptAddress } = get()
       set({
         fromToken: toToken,
         toToken: fromToken,
         fromChain: toChain,
         toChain: fromChain,
+        ethAddress: aptAddress,
+        aptAddress: ethAddress,
         fromAmount: '',
         toAmount: '',
         quote: null,

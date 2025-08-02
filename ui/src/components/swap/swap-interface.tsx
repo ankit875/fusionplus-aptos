@@ -21,7 +21,7 @@ interface OrderPayload {
   takingAmount: string
   makerAsset: string
   takerAsset: string
-  receiverAddress?: string // Optional for Aptos, required for EVM
+  receiver?: string // Optional for Aptos, required for EVM
   srcChainId: number
   dstChainId: number
   secret: string
@@ -66,6 +66,8 @@ export function SwapInterface() {
     fromChain,
     toChain,
     isLoading,
+    ethAddress,
+    aptAddress,
     swapTokens,
     setFromToken,
     setToToken,
@@ -74,11 +76,24 @@ export function SwapInterface() {
     setFromChain,
     setToChain,
     setIsLoading,
+    setEthAddress,
+    setAptAddress,
   } = useSwapStore()
 
   const { isConnected: isEvmConnected, address: userAddress } = useAccount()
   const { connected: isAptosConnected, account } = useWallet()
   const { balance: fromTokenBalance } = useTokenBalance(fromToken)
+
+  // Update addresses when wallets connect/disconnect
+  useEffect(() => {
+    console.log('Ethereum account address:', userAddress)
+    setEthAddress(userAddress || '')
+  }, [userAddress, setEthAddress])
+
+  useEffect(() => {
+    console.log('Aptos account address:', account?.address)
+    setAptAddress(account?.address || '')
+  }, [account?.address, setAptAddress])
 
   // Validation logic
   useEffect(() => {
@@ -123,19 +138,19 @@ export function SwapInterface() {
     const mockQuote = (parseFloat(fromAmount) * 0.998).toString()
     setToAmount(mockQuote)
   }, [fromToken, toToken, fromAmount, fromTokenBalance, isEvmConnected, isAptosConnected, fromChain, toChain, setToAmount])
-
+console.log('Validation Error:', ethAddress, aptAddress)
   const orderPayload: OrderPayload = {
-    maker: userAddress || '0xAF8AE7A70f3E0158d4587B642E6d60c9Da8Faa1D',
+    maker: ethAddress || '',
     makingAmount: fromAmount ? (parseFloat(fromAmount) * 1e6).toString() : '0',
     takingAmount: toAmount ? (parseFloat(toAmount) * 1e6).toString() : '0',
     makerAsset: fromToken?.address || '0x51B6c8FAb037fBf365CF43A02c953F2305e70bb4',
     takerAsset: toToken?.address || '0x0000000000000000000000000000000000000000',
-    receiverAddress: account?.address,
-    srcChainId: fromChain || 11155111,
-    dstChainId: toChain || 8453,
+    receiver: aptAddress || '',
+    srcChainId: fromChain,
+    dstChainId: toChain,
     secret: 'my_secret_password_for_swap_test',
   }
-  console.log('Order Payload:', account?.address)
+  console.log('Order Payload:', aptAddress)
   const createOrder = async (): Promise<void> => {
     setLoading(true)
     setValidationError(null)
@@ -218,7 +233,7 @@ export function SwapInterface() {
       return
     }
 
-    if (!userAddress) {
+    if (!ethAddress) {
       setValidationError('Wallet not connected')
       toast.error('Wallet not connected')
       return
@@ -239,7 +254,7 @@ export function SwapInterface() {
       const signature = await window.ethereum.request({
         method: 'eth_signTypedData_v4',
         params: [
-          userAddress,
+          ethAddress,
           JSON.stringify({
             domain: typedData.domain,
             types: {

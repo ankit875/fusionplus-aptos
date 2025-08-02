@@ -39,7 +39,7 @@ export function useTokenBalance(token: Token | null) {
 
     setIsLoading(true)
 
-    if (token.chainId === 999999) {
+    if (token.chainId === 8453) {
       // Aptos token balance
       if (isAptosConnected && aptosAccount?.address) {
         fetchAptosBalance(token, aptosAccount.address)

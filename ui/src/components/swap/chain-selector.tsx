@@ -25,7 +25,7 @@ export function ChainSelector({ selectedChain, onChainSelect }: ChainSelectorPro
       >
         {selectedChainData ? (
           <>
-            {selectedChainData.logoURI && (
+            {/* {selectedChainData.logoURI && (
               <Image
                 src={selectedChainData.logoURI}
                 alt={selectedChainData.name}
@@ -33,7 +33,7 @@ export function ChainSelector({ selectedChain, onChainSelect }: ChainSelectorPro
                 width={20}
                 height={20}
               />
-            )}
+            )} */}
             <span>{selectedChainData.symbol}</span>
           </>
         ) : (
@@ -53,7 +53,7 @@ export function ChainSelector({ selectedChain, onChainSelect }: ChainSelectorPro
               }}
               className="w-full flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg last:rounded-b-lg"
             >
-              {chain.logoURI && (
+              {/* {chain.logoURI && (
                 <Image
                   src={chain.logoURI}
                   alt={chain.name}
@@ -61,7 +61,7 @@ export function ChainSelector({ selectedChain, onChainSelect }: ChainSelectorPro
                   width={20}
                   height={20}
                 />
-              )}
+              )} */}
               <span>{chain.name}</span>
             </button>
           ))}

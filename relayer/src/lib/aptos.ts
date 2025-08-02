@@ -37,6 +37,13 @@ if (process.env.USER_PRIVKEY && process.env.USER_ADDR) {
 
 const client = new AptosClient(NODE);
 
+type AnnounceOrderParams = {
+  srcAmount: number;
+  minDstAmount: number;
+  expiresInSecs: number;
+  secretHashHex: Uint8Array;
+};
+
 // ✅ ADDED: Get next available order ID for accurate predictions
 async function getNextOrderId(): Promise<number> {
   try {
@@ -239,15 +246,15 @@ async function initialize_swap_ledger() {
 }
 
 // ✅ ENHANCED: With order ID prediction
-async function anounce_order() {
+async function anounce_order({srcAmount, minDstAmount, expiresInSecs, secretHashHex}: AnnounceOrderParams) {
   const SRC_COIN_TYPE =
     `${process.env.TOKEN_TYPE}`;
-  const srcAmount = 1e8;
-  const minDstAmount = 1e8;
-  const expiresInSecs = 3_600; // 1 hour
+  // const srcAmount = 1e8;
+  // const minDstAmount = 1e8;
+  // const expiresInSecs = 3_600; // 1 hour
 
-  const stringBytes = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
-  const secretHashHex = hexToUint8Array(ethers.keccak256(stringBytes));
+  // const stringBytes = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
+  // const secretHashHex = hexToUint8Array(ethers.keccak256(stringBytes));
 
   // ✅ ADDED: Predict order ID
   const nextOrderId = await getNextOrderId();

@@ -23,7 +23,7 @@ function TokenOption({ token, onSelect }: { token: Token; onSelect: () => void }
       className="w-full flex items-center justify-between p-3 hover:bg-gray-100 dark:hover:bg-gray-700 first:rounded-t-lg last:rounded-b-lg"
     >
       <div className="flex items-center space-x-3">
-        {token.logoURI && (
+        {/* {token.logoURI && (
           <Image
             src={token.logoURI}
             alt={token.symbol}
@@ -31,7 +31,7 @@ function TokenOption({ token, onSelect }: { token: Token; onSelect: () => void }
             width={24}
             height={24}
           />
-        )}
+        )} */}
         <div className="flex flex-col items-start">
           <span className="font-medium">{token.symbol}</span>
           <span className="text-xs text-muted-foreground">{token.name}</span>
@@ -61,7 +61,7 @@ export function TokenSelector({ selectedToken, onTokenSelect, chainId }: TokenSe
         <div className="flex items-center space-x-2">
           {selectedToken ? (
             <>
-              {selectedToken.logoURI && (
+              {/* {selectedToken.logoURI && (
                 <Image
                   src={selectedToken.logoURI}
                   alt={selectedToken.symbol}
@@ -69,7 +69,7 @@ export function TokenSelector({ selectedToken, onTokenSelect, chainId }: TokenSe
                   width={20}
                   height={20}
                 />
-              )}
+              )} */}
               <span>{selectedToken.symbol}</span>
             </>
           ) : (
