@@ -12,6 +12,7 @@ import {
   AmountMode,
   EscrowFactory as SdkEscrowFactory,
   Immutables,
+  DstImmutablesComplement,
 } from "@1inch/cross-chain-sdk";
 import { uint8ArrayToHex } from "@1inch/byte-utils";
 import { Resolver as EthereumResolverContract } from "../lib/resolver.js";
@@ -23,7 +24,7 @@ import {
   createReceiverAddress,
   getAptosReceiverAddress,
 } from "../utils/aptosAddress.js";
-import { anounce_order, claim_funds, fund_dst_escrow, fund_src_escrow, getNextOrderId, getOrderDetails } from "../lib/aptos.js";
+import { claim_funds, fund_dst_escrow, fund_src_escrow, getNextOrderId, getOrderDetails } from "../lib/aptos.js";
 import { EscrowFactory } from "../lib/escrow-factory.js";
 import { AptosAccount } from "aptos";
 
@@ -86,7 +87,6 @@ router.get("/getQuote", (req, res) => {
   res.json(mockQuote);
 });
 
-// Default values managed by the relayer
 const UINT_40_MAX = 2n ** 40n - 1n;
 
 router.post("/createOrder", async (req, res) => {
@@ -251,6 +251,15 @@ router.post("/fillOrder", async (req, res) => {
     );
     
     const fillAmount = orderInstance.makingAmount;
+    // const originalSecret = ethers.toUtf8Bytes(
+    //   "my_secret_password_for_swap_test"
+    // );
+    // const finalSecret = uint8ArrayToHex(originalSecret);  
+
+    // const ethereumFactory = new EscrowFactory(
+    //   provider,
+    //   ethereumConfig.escrowFactoryContractAddress
+    // );
 
   if (srcChainId === CHAIN_IDS?.SEPOLIA) {
     const receiver = orderInstance.receiver.toString();
@@ -330,7 +339,8 @@ router.post("/fillOrder", async (req, res) => {
     );
 
     await claim_funds(orderId, originalSecret);
-  } else if (srcChainId === CHAIN_IDS?.APTOS) {
+  } 
+  else if (srcChainId === CHAIN_IDS?.APTOS) {
     const resolverAccount = AptosAccount.fromAptosAccountObject({
       privateKeyHex: process.env.USER_PRIVKEY as string,
       address: process.env.USER_ADDR as string,
@@ -338,12 +348,13 @@ router.post("/fillOrder", async (req, res) => {
     const ethMakerAddress = getAptosReceiverAddress(orderInstance.maker.toString());
     const makingAmount = Number(orderInstance.makingAmount);
     const takingAmount = orderInstance.takingAmount;
-const secretHashU8 = new Uint8Array(ethers.getBytes(orderHash));
-   const orderID = await anounce_order({
+    const secretHashU8 = new Uint8Array(ethers.getBytes(orderHash));
+   const orderID = await fund_src_escrow({
         minDstAmount: Number(takingAmount),
         expiresInSecs: 3600,
         secretHashHex: secretHashU8,
         srcAmount: makingAmount,
+        signature,
         resolverAccount
     })
     console.log(
@@ -356,17 +367,38 @@ const secretHashU8 = new Uint8Array(ethers.getBytes(orderHash));
     );
 
     console.log(`[Ethereum] Filling order ${orderHash}`);
-    const immutable = orderInstance.toSrcImmutables(srcChainId,taker, takingAmount, orderHash );
-    const deployDstTx = resolverContract.deployDst(immutable);
-    // console.log('transaction to address', deployDstTx.to, 'data',deployDstTx.data, deployDstTx.value, resolverContract.dstAddress, ' expected', ethereumConfig.resolverContractAddress);
+    const immutables = orderInstance.toSrcImmutables(srcChainId,taker, takingAmount, orderHash );
+    const deployDstTx = resolverContract.deployDst(immutables);
     const { txHash: orderFillHash, blockHash: ethereumDeployBlock } =
       await ethereumResolverWallet.send(
         deployDstTx
       );
      
     console.log(
-      `[Aptos Testnet] Funding source escrow for order ${orderFillHash} with blockHash: ${ethereumDeployBlock}`
+      `[Ethereum Testnet] Funding source escrow for order ${orderFillHash} with blockHash: ${ethereumDeployBlock}`
     );
+
+    const ESCROW_DST_IMPLEMENTATION = await ethereumFactory.getDestinationImpl()
+        const dstEscrowAddress = new SdkEscrowFactory(new Address(ethereumConfig.escrowFactoryContractAddress))
+            .getDstEscrowAddress(
+                immutables,
+                DstImmutablesComplement.new({
+                    amount: immutables.amount,
+                    maker: immutables.maker,
+                    safetyDeposit: immutables.safetyDeposit,
+                    token: immutables.token
+                }),
+                0n,
+                immutables.taker,
+                ESCROW_DST_IMPLEMENTATION
+            )
+        const { txHash: resolverWithdrawHash } = await ethereumResolverWallet.send(
+            resolverContract.withdraw('dst', dstEscrowAddress, finalSecret, immutables)
+        )
+    console.log(
+      `[Ethereum] Successfully withdrew funds for resolver in tx: ${resolverWithdrawHash}`
+    );
+     await claim_funds(orderID, originalSecret);
   }
   res.json({ success: true });
 });

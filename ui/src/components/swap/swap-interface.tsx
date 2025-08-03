@@ -21,7 +21,7 @@ interface OrderPayload {
   takingAmount: string
   makerAsset: string
   takerAsset: string
-  receiver?: string // Optional for Aptos, required for EVM
+  receiver?: string 
   srcChainId: number
   dstChainId: number
   secret: string
@@ -81,7 +81,7 @@ export function SwapInterface() {
   } = useSwapStore()
 
   const { isConnected: isEvmConnected, address: userAddress } = useAccount()
-  const { connected: isAptosConnected, account } = useWallet()
+  const { connected: isAptosConnected, account, signMessage } = useWallet()
   const { balance: fromTokenBalance } = useTokenBalance(fromToken)
 
   // Update addresses when wallets connect/disconnect
@@ -138,7 +138,7 @@ export function SwapInterface() {
     const mockQuote = (parseFloat(fromAmount) * 0.998).toString()
     setToAmount(mockQuote)
   }, [fromToken, toToken, fromAmount, fromTokenBalance, isEvmConnected, isAptosConnected, fromChain, toChain, setToAmount])
-console.log('Validation Error:', ethAddress, aptAddress)
+console.log('Validation:', ethAddress, aptAddress)
   const orderPayload: OrderPayload = {
     maker: ethAddress || '',
     makingAmount: fromAmount ? (parseFloat(fromAmount) * 1e6).toString() : '0',
@@ -150,7 +150,6 @@ console.log('Validation Error:', ethAddress, aptAddress)
     dstChainId: toChain,
     secret: 'my_secret_password_for_swap_test',
   }
-  console.log('Order Payload:', aptAddress)
   const createOrder = async (): Promise<void> => {
     setLoading(true)
     setValidationError(null)
@@ -271,11 +270,8 @@ console.log('Validation Error:', ethAddress, aptAddress)
           }),
         ],
       })
-      console.log('Signature: created...', signature)
       setSignature(signature)
       toast.success('Order signed successfully!')
-      
-      // Pass signature directly to fillOrder
       await fillOrder(signature)
     } catch (err) {
       setValidationError(`Failed to sign order: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -289,15 +285,37 @@ console.log('Validation Error:', ethAddress, aptAddress)
     if (!createdOrder) {
       await createOrder()
     } else if (!signature) {
-      // Only trigger sign order if source chain is Ethereum Sepolia (11155111)
       if (fromChain === 11155111) {
         await signOrder()
       } else {
         // Skip signing for other chains and go directly to fill order
-        console.log('Skipping signature for chain:', fromChain)
-        toast.success('Signature not required for this chain')
-        await fillOrder('') // Pass empty signature for non-EVM chains
+        // console.log('Skipping signature for chain:', fromChain)
+        // toast.success('Signature not required for this chain')
+        await aptosSignOrder()
       }
+    }
+  }
+
+  const aptosSignOrder = async () => {
+    if (!isAptosConnected || !account) {
+      setValidationError('Connect Aptos wallet to sign order')
+      toast.error('Connect Aptos wallet to sign order')
+      return
+    }
+    setSigning(true)
+    setValidationError(null)
+    
+    try {
+      const signature = await signMessage({message: JSON.stringify({order: createdOrder}), nonce: Date.now().toString()})
+      console.log('Signature: created...', signature?.signature?.toString())
+      toast.success('Order signed successfully!')
+       await fillOrder(signature?.signature?.toString())
+
+    } catch (err) {
+      setValidationError(`Network Error: ${err instanceof Error ? err.message : 'Failed to connect to server'}`)
+      toast.error('Network error occurred')
+    } finally {
+      setSigning(false)
     }
   }
 
@@ -323,12 +341,7 @@ console.log('Validation Error:', ethAddress, aptAddress)
     if (filledOrder) return 'Order Completed'
     if (signature) return 'Order Signed'
     if (createdOrder) {
-      // Show different text based on source chain
-      if (fromChain === 11155111) {
-        return 'Sign Order'
-      } else {
-        return 'Fill Order'
-      }
+      return 'Sign Order'
     }
     return 'Create Order'
   }

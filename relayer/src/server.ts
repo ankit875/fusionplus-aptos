@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
-import relayerRoutes from './routes/relayer';
+import relayerRoutes from './routes/relayerd';
 import resolverRoutes from './routes/resolver';
 
 const app = express();

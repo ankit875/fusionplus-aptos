@@ -1,5 +1,14 @@
 {
+  "scripts": {
+    "start:relayer": "tsx src/websocket/ws-relayer-server.ts",
+    "start:resolver": "tsx src/websocket/ws-resolver-server.ts",
+    "start:system": "tsx --watch src/websocket/start-system.ts",
+    "test:client": "tsx src/websocket/test-client.ts",
+    "dev:relayer": "tsx --watch src/websocket/ws-relayer-server.ts",
+    "dev:resolver": "tsx --watch src/websocket/ws-resolver-server.ts"
+  },
   "dependencies": {
+    "@1inch/byte-utils": "^3.1.0",
     "@1inch/cross-chain-sdk": "^0.1.15",
     "@1inch/fusion-sdk": "^2.3.5",
     "@aptos-labs/ts-sdk": "^3.1.3",
@@ -16,14 +25,17 @@
     "swagger-ui-express": "^5.0.1",
     "typescript": "^5.8.3",
     "uuid": "^11.1.0",
-    "web3": "^4.16.0"
+    "web3": "^4.16.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/morgan": "^1.9.10",
     "@types/swagger-ui-express": "^4.1.8",
-    "@types/bun": "latest"
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.20.3"
   },
   "name": "relayer",
   "peerDependencies": {
