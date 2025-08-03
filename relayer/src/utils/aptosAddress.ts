@@ -66,20 +66,20 @@ export function getOriginalAptosAddress(ethAddress: string): string | undefined 
     return originalAddress;
 }
 
-export function getAptosReceiverAddress(orderInstance: any): string {
-    const ethReceiverAddress = orderInstance.receiver?.toString();
-    if (!ethReceiverAddress) {
+export function getAptosReceiverAddress(changeAddress: any): string {
+    // const changeAddress = orderInstance.receiver?.toString();
+    if (!changeAddress) {
         throw new Error('No receiver address found in order');
     }
     
-    const originalAptosAddress = getOriginalAptosAddress(ethReceiverAddress);
+    const originalAptosAddress = getOriginalAptosAddress(changeAddress);
     if (originalAptosAddress) {
         console.log(`📋 Using original Aptos address: ${originalAptosAddress}`);
         return originalAptosAddress;
     }
     
-    console.log(`📋 Using address as-is: ${ethReceiverAddress}`);
-    return ethReceiverAddress;
+    console.log(`📋 Using address as-is: ${changeAddress}`);
+    return changeAddress;
 }
 
 export function createReceiverAddress(receiverAddress: string) {

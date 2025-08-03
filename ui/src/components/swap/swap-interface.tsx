@@ -289,7 +289,15 @@ console.log('Validation Error:', ethAddress, aptAddress)
     if (!createdOrder) {
       await createOrder()
     } else if (!signature) {
-      await signOrder()
+      // Only trigger sign order if source chain is Ethereum Sepolia (11155111)
+      if (fromChain === 11155111) {
+        await signOrder()
+      } else {
+        // Skip signing for other chains and go directly to fill order
+        console.log('Skipping signature for chain:', fromChain)
+        toast.success('Signature not required for this chain')
+        await fillOrder('') // Pass empty signature for non-EVM chains
+      }
     }
   }
 
@@ -314,7 +322,14 @@ console.log('Validation Error:', ethAddress, aptAddress)
     if (!fromAmount || parseFloat(fromAmount) <= 0) return 'Enter amount'
     if (filledOrder) return 'Order Completed'
     if (signature) return 'Order Signed'
-    if (createdOrder) return 'Sign Order'
+    if (createdOrder) {
+      // Show different text based on source chain
+      if (fromChain === 11155111) {
+        return 'Sign Order'
+      } else {
+        return 'Fill Order'
+      }
+    }
     return 'Create Order'
   }
 

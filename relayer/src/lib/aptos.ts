@@ -42,6 +42,7 @@ type AnnounceOrderParams = {
   minDstAmount: number;
   expiresInSecs: number;
   secretHashHex: Uint8Array;
+  resolverAccount?: AptosAccount; // Optional resolver account for funding
 };
 
 // ✅ ADDED: Get next available order ID for accurate predictions
@@ -144,7 +145,7 @@ async function getBalance(module_address: string) {
     try {
       const [balance] = await client.view({
         function: "0x1::coin::balance",
-        type_arguments: ["0x1::aptos_coin::AptosCoin"],
+        type_arguments: [process.env.TOKEN_TYPE!],
         arguments: [module_address],
       });
       console.log("✅ APT Balance (View function):", balance, "octas");
@@ -246,7 +247,7 @@ async function initialize_swap_ledger() {
 }
 
 // ✅ ENHANCED: With order ID prediction
-async function anounce_order({srcAmount, minDstAmount, expiresInSecs, secretHashHex}: AnnounceOrderParams) {
+async function anounce_order({srcAmount, minDstAmount, expiresInSecs, secretHashHex, resolverAccount}: AnnounceOrderParams) {
   const SRC_COIN_TYPE =
     `${process.env.TOKEN_TYPE}`;
   // const srcAmount = 1e8;
@@ -272,7 +273,7 @@ async function anounce_order({srcAmount, minDstAmount, expiresInSecs, secretHash
     ],
   };
 
-  const success = await signAndSubmit(payload, "Announcing order");
+  const success = await signAndSubmit(payload, "Announcing order", resolverAccount);
 
   if (success) {
     console.log(`✅ Order ${nextOrderId} announced successfully`);
@@ -321,6 +322,37 @@ async function fund_dst_escrow({ cointype, dstAmount, duration, secret_hash,reci
     return -1;
   }
   
+}
+
+async function fund_src_escrow(
+  {cointype,
+  orderId
+  } : {cointype: string, orderId: number}
+) {
+
+  const nextOrderId = await getNextOrderId();
+  console.log(`📋 fund_src_escrow will create order ID: ${nextOrderId}`);
+
+  const payload = {
+    type: "entry_function_payload",
+    function: `${MODULE_ADDRESS}::swap_v11::fund_src_escrow`, // Adjust module name if different
+    // Generic type arguments
+    type_arguments: [cointype],
+    // Function arguments: only order_id is needed
+    arguments: [orderId.toString()],
+  };
+
+  console.log("fund_src_escrow payload:", payload);
+
+  const success = await signAndSubmit(payload, "Funding destination escrow");
+
+  if (success) {
+    console.log(`✅ Order  funded successfully`);
+    return nextOrderId;
+  } else {
+    console.log("❌ Failed to fund destination escrow");
+    return -1;
+  }
 }
 
 // ✅ ENHANCED: Dynamic order ID and better error handling
@@ -440,7 +472,7 @@ async function main() {
 
   // Swap functions
   // await anounce_order();
-
+  // await fund_src_escrow(
   // const dst_amount = 1e8;
   // const expiration_duration_secs = Math.floor(Date.now() / 1000) + 3600;
   // const secret = ethers.toUtf8Bytes("my_secret_password_for_swap_test");
@@ -509,5 +541,6 @@ export {
   hexToUint8Array,
   areAccountsConfigured,
   getAccountInfo,
-  getBalance
+  getBalance,
+  fund_src_escrow
 }

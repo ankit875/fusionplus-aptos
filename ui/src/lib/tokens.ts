@@ -21,7 +21,7 @@ export const CHAINS = [
   {
     id: CHAIN_IDS.SEPOLIA,
     name: 'Sepolia',
-    symbol: 'ETH',
+    symbol: 'SepoliaETH',
     logoURI: 'https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png',
   },
   {
@@ -185,14 +185,6 @@ export const TOKENS_BY_CHAIN: Record<number, Token[]> = {
       decimals: 10,
       chainId: CHAIN_IDS.APTOS,
       logoURI: 'https://raw.githubusercontent.com/aptos-labs/aptos-core/main/ecosystem/platform/public/logo.png',
-    },
-    {
-      address: '0xf22bede237a07e121b56d91a491eb7bcdfd1f5907926a9e58338f964a01b17fa::asset::USDC',
-      symbol: 'USDC',
-      name: 'USD Coin',
-      decimals: 6,
-      chainId: CHAIN_IDS.APTOS,
-      logoURI: 'https://tokens.1inch.io/0xa0b86a33e6441d147eec6b0fb6a44dafb51d7b6a.png',
-    },
+    }
   ],
 }

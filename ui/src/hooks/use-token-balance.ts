@@ -5,6 +5,13 @@ import { useAccount, useBalance } from 'wagmi'
 import { useWallet } from '@aptos-labs/wallet-adapter-react'
 import { formatUnits } from 'viem'
 import type { Token } from '@/store/swap-store'
+import { AptosClient } from 'aptos'
+import {
+  Account,
+  Aptos,
+  AptosConfig,
+  Network,
+} from "@aptos-labs/ts-sdk";
 
 export interface TokenBalance {
   token: Token
@@ -12,6 +19,9 @@ export interface TokenBalance {
   formattedBalance: string
   isLoading: boolean
 }
+
+const config = new AptosConfig({ network: Network.TESTNET });
+const aptos = new Aptos(config);
 
 export function useTokenBalance(token: Token | null) {
   const [balance, setBalance] = useState<string>('0')
@@ -62,11 +72,30 @@ export function useTokenBalance(token: Token | null) {
     try {
       // Mock Aptos balance - replace with actual Aptos SDK call
       // const aptosClient = new AptosClient(process.env.NEXT_PUBLIC_APTOS_RPC!)
-      // const balance = await aptosClient.getAccountResource(address, token.address)
-      
-      // For now, return mock balance
-      setBalance('100.0')
-      setIsLoading(false)
+      let aptosBalance = 0;
+      const coinType = process.env.NEXT_PUBLIC_APTOS_TOKEN_TYPE!
+      try {
+       const balance = await aptos.getAccountCoinAmount({
+         accountAddress: address,
+         coinType
+       });
+       console.log("✅ APT Balance:1212212112", balance, "octas");
+        try {
+          console.log("✅ APT Balance (View function):", (Number(balance) / 100000000).toFixed(8), "APT");
+          aptosBalance = Number(balance);
+        } catch (viewError: any) {
+          console.log("ℹ️  View function returned error (likely no balance):", viewError.message);
+        }
+
+        const tokenBalance = (aptosBalance / 100000000).toFixed(8)
+        // For now, return mock balance
+        setBalance(tokenBalance)
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Error fetching Aptos balance:', error)
+        setBalance('0')
+        setIsLoading(false)
+      }
     } catch (error) {
       console.error('Error fetching Aptos balance:', error)
       setBalance('0')
